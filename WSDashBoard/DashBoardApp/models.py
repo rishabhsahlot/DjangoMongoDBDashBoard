@@ -11,15 +11,9 @@ class TextFieldWrapper(models.Model):
         abstract = True
 
 
-class TextArrayFieldWrapper(models.Model):
-    textArray = models.ArrayField(model_container=TextFieldWrapper)
-
-    class Meta:
-        abstract = True
-
-
 class API(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.URLField()
     title = models.TextField(blank=True, default='')
     summary = models.TextField(blank=False, default='')
     rating = models.FloatField()
@@ -65,12 +59,12 @@ class API(models.Model):
     limits = models.TextField()
     terms = models.URLField()
     company = models.IntegerField()
-
     updated = models.DateTimeField()
 
 
 class Mashup(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    mid = models.URLField()
     title = models.TextField()
     summary = models.TextField()
     rating = models.FloatField()
@@ -86,7 +80,9 @@ class Mashup(models.Model):
     dateModified = models.DateTimeField()
     numComments = models.IntegerField()
     commentsUrl = models.URLField()
-    tags = models.ArrayField(model_container=TextFieldWrapper)
+    Tags = models.ArrayField(model_container=TextFieldWrapper)
+    APINames = models.ArrayField(model_container=TextFieldWrapper)
+    APIURLs = models.ArrayField(model_container=TextFieldWrapper)
     APIs = models.ArrayField(model_container=TextArrayFieldWrapper)
 
     updated = models.DateTimeField()
