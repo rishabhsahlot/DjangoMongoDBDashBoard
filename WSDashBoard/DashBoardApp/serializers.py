@@ -1,13 +1,13 @@
 from rest_framework import serializers
-from WSDashBoard.DashBoardApp.models import API, Mashup
+from DashBoardApp.models import API, Mashup
 
 
 class APISerializer(serializers.ModelSerializer):
 
     class Meta:
         model = API
-        fields = ('_id',
-                  'name'
+        fields = ('uid',
+                  'name',
                   'updated',
                   'protocols',
                   'category',
@@ -23,7 +23,7 @@ class MashupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Mashup
-        fields = ('_id',
+        fields = ('mid',
                   'title',
                   'APIs',
                   'Tags'

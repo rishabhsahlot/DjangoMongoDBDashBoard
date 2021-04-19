@@ -5,8 +5,8 @@ from django.http.response import JsonResponse
 from rest_framework.parsers import JSONParser
 from rest_framework import status
 
-from WSDashBoard.DashBoardApp.models import API, Mashup
-from WSDashBoard.DashBoardApp.serializers import APISerializer, MashupSerializer
+from DashBoardApp.models import API, Mashup
+from DashBoardApp.serializers import APISerializer, MashupSerializer
 from rest_framework.decorators import api_view
 
 import pandas as pd
@@ -21,6 +21,7 @@ def APIList(request):
 
         # Getting text file containing API information
         db_source = request.GET.get('DBSource', None)
+        print(db_source)
         if db_source is None:
             apis = API.objects.all()
 
@@ -74,14 +75,14 @@ def APIList(request):
             return JsonResponse(apis_serializer.data, safe=False)
 
         else:
-            apiCols = ['_id', 'title', 'summary', 'rating', 'name', 'label', 'author', 'description', 'APIType', 'downloads', 'useCount', 'sampleUrl',
+            apiCols = ['uid', 'title', 'summary', 'rating', 'name', 'label', 'author', 'description', 'APIType', 'downloads', 'useCount', 'sampleUrl',
                        'downloadUrl', 'dateModified', 'remoteFeed', 'numComments', 'commentsUrl', 'Tags', 'category', 'protocols', 'serviceEndpoint',
                        'version', 'wsdl', 'data_formats', 'apigroups', 'example', 'clientInstall', 'authentication', 'ssl', 'readonly',
-                       'VendorApiKits', 'CommunityApiKits', 'blog', 'forum', 'support', 'accountReq', 'commercial', 'provider', 'managedBy',
+                       'VendorAPIKits', 'CommunityAPIKits', 'blog', 'forum', 'support', 'accountReq', 'commercial', 'provider', 'managedBy',
                        'nonCommercial', 'dataLicensing', 'fees', 'limits', 'terms', 'company', 'updated']
-
-            apiData = pd.read_csv('data/api.txt', sep="\$\#\$", names=apiCols)
-
+            print(db_source)
+            apiData = pd.read_csv(db_source, sep="\$\#\$", names=apiCols)
+            #  len(apiData))
             apiData['Tags'] = apiData['Tags'].apply(
                 lambda x: x.split('###') if isinstance(x, str) else x)
             apiData['ssl'] = apiData['ssl'].apply(
@@ -96,9 +97,16 @@ def APIList(request):
             data = [{k: v for k, v in m.items() if not (isinstance(
                 v, float) and math.isnan(v))} for m in apiData.to_dict(orient='rows')]
 
-            aList = [API(**vals) for vals in data]
+            # aList = [API(**vals) for vals in data]
+            print(data[0])
+            api_serializer = APISerializer(data=data[0])
+            if api_serializer.is_valid():
+                api_serializer.save()
+                return JsonResponse(api_serializer.data, status=status.HTTP_201_CREATED)
+            return JsonResponse(api_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            API.objects.bulk_create(aList)
+            # aList[0].save()
+            # bulk_create(aList)
 
     elif request.method == 'DELETE':
         count = API.objects.all().delete()

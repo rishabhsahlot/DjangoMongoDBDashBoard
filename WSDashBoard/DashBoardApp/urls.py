@@ -1,5 +1,5 @@
 from django.conf.urls import url
-from WSDashBoard import views
+from DashBoardApp import views
 
 urlpatterns = [
     url(r'^api/DashBoardApp/APIs$', views.APIList),

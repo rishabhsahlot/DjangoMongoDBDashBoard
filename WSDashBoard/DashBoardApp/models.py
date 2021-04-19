@@ -18,6 +18,7 @@ class API(models.Model):
     summary = models.TextField(blank=False, default='')
     rating = models.FloatField()
     name = models.TextField(blank=False, default='')
+    label = models.TextField()
     author = models.TextField()
     description = models.TextField()
     APIType = models.IntegerField()
@@ -83,6 +84,5 @@ class Mashup(models.Model):
     Tags = models.ArrayField(model_container=TextFieldWrapper)
     APINames = models.ArrayField(model_container=TextFieldWrapper)
     APIURLs = models.ArrayField(model_container=TextFieldWrapper)
-    APIs = models.ArrayField(model_container=TextArrayFieldWrapper)
 
     updated = models.DateTimeField()
