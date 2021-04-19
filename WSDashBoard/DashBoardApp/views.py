@@ -99,11 +99,18 @@ def APIList(request):
 
             # aList = [API(**vals) for vals in data]
             print(data[0])
-            api_serializer = APISerializer(data=data[0])
-            if api_serializer.is_valid():
-                api_serializer.save()
-                return JsonResponse(api_serializer.data, status=status.HTTP_201_CREATED)
-            return JsonResponse(api_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # api_serializer = APISerializer(data=data[0])
+            obj = API(**data[0])
+
+            print(obj.__dict__)
+
+            obj.save()
+            return JsonResponse(data[0], status=status.HTTP_201_CREATED)
+            # API.objects.Create(data[0])
+            # if api_serializer.is_valid():
+            #     api_serializer.save()
+            #     return JsonResponse(api_serializer.data, status=status.HTTP_201_CREATED)
+            # return JsonResponse(api_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # aList[0].save()
             # bulk_create(aList)
