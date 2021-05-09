@@ -12,7 +12,6 @@ class TextFieldWrapper(models.Model):
 
 
 class API(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     uid = models.URLField()
     title = models.TextField(blank=True, default='')
     summary = models.TextField(blank=False, default='')
@@ -32,7 +31,7 @@ class API(models.Model):
     remoteFeed = models.TextField()
     numComments = models.IntegerField()
     commentsUrl = models.URLField()
-    Tags = models.ArrayField(model_container=TextFieldWrapper)
+    Tags = models.TextField()  # Array
     category = models.TextField()
     protocols = models.TextField()
     serviceEndpoint = models.URLField()
@@ -41,16 +40,16 @@ class API(models.Model):
     data_formats = models.TextField()
     apigroups = models.TextField()
     example = models.TextField()
-    clientInstall = models.BooleanField()  # models.TextField()
+    clientInstall = models.TextField()  # models.BooleanField()
     authentication = models.TextField()
-    ssl = models.BooleanField()  # models.TextField()
+    ssl = models.TextField()  # models.BooleanField()
     readonly = models.TextField()
     VendorAPIKits = models.TextField()
     CommunityAPIKits = models.TextField()
     blog = models.URLField()
     forum = models.URLField()
     support = models.URLField()
-    accountReq = models.BooleanField()  # models.TextField()
+    accountReq = models.TextField()  # models.BooleanField()
     commercial = models.TextField()
     provider = models.URLField()
     managedBy = models.TextField()
@@ -64,7 +63,6 @@ class API(models.Model):
 
 
 class Mashup(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     mid = models.URLField()
     title = models.TextField()
     summary = models.TextField()
@@ -81,8 +79,8 @@ class Mashup(models.Model):
     dateModified = models.DateTimeField()
     numComments = models.IntegerField()
     commentsUrl = models.URLField()
-    Tags = models.ArrayField(model_container=TextFieldWrapper)
-    APINames = models.ArrayField(model_container=TextFieldWrapper)
-    APIURLs = models.ArrayField(model_container=TextFieldWrapper)
+    Tags = models.TextField()  # models.ArrayField(model_container=TextFieldWrapper)
+    APINames = models.TextField()  # models.ArrayField(model_container=TextFieldWrapper)
+    APIURLs = models.TextField()  # models.ArrayField(model_container=TextFieldWrapper)
 
     updated = models.DateTimeField()

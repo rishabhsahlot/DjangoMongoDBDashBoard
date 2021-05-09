@@ -12,6 +12,7 @@ from rest_framework.decorators import api_view
 import pandas as pd
 from datetime import datetime
 import math
+from tqdm import tqdm
 
 
 @api_view(['GET', 'DELETE'])
@@ -31,12 +32,12 @@ def APIList(request):
                 apis = apis.filter(updated__year=updatedyear)
 
             # Protocols
-            protocols = request.GET.get('protcols', None)
+            protocols = request.GET.get('protocols', None)
             if protocols is not None:
                 protocols = protocols.split(',')
                 for protocol in protocols:
                     protocol_regex = ".*" + protocol+".*"
-                    apis = apis.filter(protocol__regex=protocol_regex)
+                    apis = apis.filter(protocols__regex=protocol_regex)
 
             # Category
             category = request.GET.get('category', None)
@@ -44,7 +45,7 @@ def APIList(request):
                 apis = apis.filter(category=category)
 
             # Rating
-            rat = request.GET.get('category', None)
+            rat = request.GET.get('rating', None)
             if rat is not None:
                 [op, rat] = rat.split("-")
                 rat = float(rat)
@@ -59,7 +60,11 @@ def APIList(request):
             tags = request.GET.get('Tags', None)
             if tags is not None:
                 tags = tags.split(',')
-                apis = apis.filter(Tags__all=tags)
+                for tag in tags:
+                    tag_regex = ".*" + tag+".*"
+                    apis = apis.filter(Tags__regex=tag_regex)
+
+                # apis = apis.filter(Tags__all=tags)
 
             # Keywords
             keywords = request.GET.get('Keywords', None)
@@ -84,7 +89,7 @@ def APIList(request):
             apiData = pd.read_csv(db_source, sep="\$\#\$", names=apiCols)
             #  len(apiData))
             apiData['Tags'] = apiData['Tags'].apply(
-                lambda x: x.split('###') if isinstance(x, str) else x)
+                lambda x: ','.join(x.split('###')) if isinstance(x, str) else x)
             apiData['ssl'] = apiData['ssl'].apply(
                 lambda x: x.capitalize() if isinstance(x, str) else x)
             apiData['accountReq'] = apiData['accountReq'].apply(
@@ -97,23 +102,15 @@ def APIList(request):
             data = [{k: v for k, v in m.items() if not (isinstance(
                 v, float) and math.isnan(v))} for m in apiData.to_dict(orient='rows')]
 
-            # aList = [API(**vals) for vals in data]
-            print(data[0])
-            # api_serializer = APISerializer(data=data[0])
-            obj = API(**data[0])
+            aList = [API(**vals) for vals in data]
+            del data
 
-            print(obj.__dict__)
+            for i in tqdm(range(len(aList))):
+                aList[i].save()
 
-            obj.save()
             return JsonResponse(data[0], status=status.HTTP_201_CREATED)
-            # API.objects.Create(data[0])
-            # if api_serializer.is_valid():
-            #     api_serializer.save()
-            #     return JsonResponse(api_serializer.data, status=status.HTTP_201_CREATED)
-            # return JsonResponse(api_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # aList[0].save()
-            # bulk_create(aList)
+            # /api/DashBoardApp/APIs?DBSource=D:\CoursesAndLearning\Spring2021\CSCI724\Assn3\DjangoMongoDBDashBoard\data\api.txt
 
     elif request.method == 'DELETE':
         count = API.objects.all().delete()
@@ -136,16 +133,20 @@ def MashupList(request):
                 mashups = mashups.filter(updated__year=updatedyear)
 
             # Used APIs
-            apis = request.GET.get('APIs', None)
+            apis = request.GET.get('APINames', None)
             if apis is not None:
                 apis = apis.split(',')
-                mashups = mashups.filter(APINames__all=apis)
+                for api in keywords:
+                    api_regex = ".*" + api+".*"
+                    mashups = mashups.filter(APINames__regex=api_regex)
 
             # Tags
             tags = request.GET.get('Tags', None)
             if tags is not None:
                 tags = tags.split(',')
-                mashups = mashups.filter(Tags__all=tags)
+                for tag in tags:
+                    tag_regex = ".*" + tag+".*"
+                    mashups = mashups.filter(Tags__regex=keyword_regex)
 
             # Keywords
             keywords = request.GET.get('Keywords', None)
@@ -162,20 +163,20 @@ def MashupList(request):
 
         else:
 
-            mashupCols = ['id', 'title', 'summary', 'rating', 'name', 'label', 'author', 'description', 'type', 'downloads', 'useCount', 'sampleUrl',
+            mashupCols = ['mid', 'title', 'summary', 'rating', 'name', 'label', 'author', 'description', 'type', 'downloads', 'useCount', 'sampleUrl',
                           'dateModified', 'numComments', 'commentsUrl', 'Tags', 'APIs', 'updated']
 
             mashupData = pd.read_csv(
                 db_source, sep="\$\#\$", names=mashupCols)  # 'data/mashup.txt'
 
             mashupData['Tags'] = mashupData['Tags'].apply(
-                lambda x: x.split('###') if isinstance(x, str) else x)
+                lambda x: ','.join(x.split('###')) if isinstance(x, str) else x)
             mashupData['APIs'] = mashupData['APIs'].apply(lambda x: list(
                 map(lambda y: y.split('$$$'), x.split('###'))) if isinstance(x, str) else x)
             mashupData['APINames'] = mashupData['APIs'].apply(
-                lambda x: list(map(lambda y: y[0], x)) if isinstance(x, list) else x)
+                lambda x: ','.join(list(map(lambda y: y[0], x))) if isinstance(x, list) else x)
             mashupData['APIURLs'] = mashupData['APIs'].apply(
-                lambda x: list(map(lambda y: y[1], x)) if isinstance(x, list) else x)
+                lambda x: ','.join(list(map(lambda y: y[1], x))) if isinstance(x, list) else x)
             mashupData['dateModified'] = mashupData['dateModified'].apply(lambda x: datetime.strptime(
                 x.replace('Z', 'UTC'), '%Y-%m-%dT%H:%M:%S%Z') if isinstance(x, str) else x)
             mashupData['updated'] = mashupData['updated'].apply(lambda x: datetime.strptime(
@@ -187,7 +188,9 @@ def MashupList(request):
 
             aList = [Mashup(**vals) for vals in data]
 
-            Mashup.objects.bulk_create(aList)
+            del data
+            for i in tqdm(range(len(aList))):
+                aList[i].save()
 
     elif request.method == 'DELETE':
         count = Mashup.objects.all().delete()
