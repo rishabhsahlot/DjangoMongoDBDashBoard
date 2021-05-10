@@ -25,8 +25,8 @@ class MashupSerializer(serializers.ModelSerializer):
         model = Mashup
         fields = ('mid',
                   'title',
-                  'APIs',
-                  'Tags'
+                  'APINames',
+                  'Tags',
                   'title',
                   'summary',
                   'description')

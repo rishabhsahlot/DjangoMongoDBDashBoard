@@ -14,6 +14,8 @@ from datetime import datetime
 import math
 from tqdm import tqdm
 
+import itertools
+
 
 @api_view(['GET', 'DELETE'])
 def APIList(request):
@@ -34,10 +36,10 @@ def APIList(request):
             # Protocols
             protocols = request.GET.get('protocols', None)
             if protocols is not None:
+                protocols = protocols.replace('%20', ' ')
                 protocols = protocols.split(',')
                 for protocol in protocols:
-                    protocol_regex = ".*" + protocol+".*"
-                    apis = apis.filter(protocols__regex=protocol_regex)
+                    apis = apis.filter(protocols__icontains=protocol)
 
             # Category
             category = request.GET.get('category', None)
@@ -59,22 +61,22 @@ def APIList(request):
             # Tags
             tags = request.GET.get('Tags', None)
             if tags is not None:
+                tags = tags.replace('%20', ' ')
                 tags = tags.split(',')
                 for tag in tags:
-                    tag_regex = ".*" + tag+".*"
-                    apis = apis.filter(Tags__regex=tag_regex)
+                    apis = apis.filter(Tags__icontains=tag)
 
                 # apis = apis.filter(Tags__all=tags)
 
             # Keywords
             keywords = request.GET.get('Keywords', None)
             if keywords is not None:
+                keywords = keywords.replace('%20', ' ')
                 keywords = keywords.split(",")
                 for keyword in keywords:
-                    keyword_regex = ".*" + keyword+".*"
-                    apis = apis.filter(title__regex=keyword_regex)
-                    apis = apis.filter(summary__regex=keyword_regex)
-                    apis = apis.filter(description__regex=keyword_regex)
+                    apis = apis.filter(title__icontains=keyword)
+                    apis = apis.filter(summary__icontains=keyword)
+                    apis = apis.filter(description__icontains=keyword)
 
             apis_serializer = APISerializer(apis, many=True)
             return JsonResponse(apis_serializer.data, safe=False)
@@ -99,6 +101,18 @@ def APIList(request):
             apiData['updated'] = apiData['updated'].apply(lambda x: datetime.strptime(
                 x.replace('Z', 'UTC'), '%Y-%m-%dT%H:%M:%S%Z') if isinstance(x, str) else x)
 
+            tags = apiData['Tags'].apply(lambda x: x.split(',')).tolist()
+            tags = list(set(list(itertools.chain.from_iterable(tags))))
+            tags = list(map(lambda x: {'key': x, 'text': x, 'value': x}, tags))
+            protocols = list(map(lambda x: {'key': x, 'text': x, 'value': x}, list(
+                apiData['protocols'].unique())))
+            categories = list(map(lambda x: {'key': x, 'text': x, 'value': x}, list(
+                apiData['category'].unique())))
+            years = list(map(lambda x: {'key': x, 'text': x, 'value': x}, apiData['updated'].apply(
+                lambda x: x.year).unique()))
+            response = {'protocols': protocols,
+                        'categories': categories, 'years': years}
+
             data = [{k: v for k, v in m.items() if not (isinstance(
                 v, float) and math.isnan(v))} for m in apiData.to_dict(orient='rows')]
 
@@ -108,7 +122,7 @@ def APIList(request):
             for i in tqdm(range(len(aList))):
                 aList[i].save()
 
-            return JsonResponse(data[0], status=status.HTTP_201_CREATED)
+            return JsonResponse(response, status=status.HTTP_201_CREATED)
 
             # /api/DashBoardApp/APIs?DBSource=D:\CoursesAndLearning\Spring2021\CSCI724\Assn3\DjangoMongoDBDashBoard\data\api.txt
 
@@ -135,28 +149,31 @@ def MashupList(request):
             # Used APIs
             apis = request.GET.get('APINames', None)
             if apis is not None:
+                apis = apis.replace('%20', ' ')
                 apis = apis.split(',')
-                for api in keywords:
-                    api_regex = ".*" + api+".*"
-                    mashups = mashups.filter(APINames__regex=api_regex)
+                print(apis)
+                for api in apis:
+                    # api_regex = r".*" + api+".*"
+                    mashups = mashups.filter(APINames__icontains=api)
 
             # Tags
             tags = request.GET.get('Tags', None)
             if tags is not None:
+                tags = tags.replace('%20', ' ')
                 tags = tags.split(',')
                 for tag in tags:
-                    tag_regex = ".*" + tag+".*"
-                    mashups = mashups.filter(Tags__regex=keyword_regex)
+                    mashups = mashups.filter(Tags__icontains=tag)
 
             # Keywords
             keywords = request.GET.get('Keywords', None)
             if keywords is not None:
+                keywords = keywords.replace('%20', ' ')
                 keywords = keywords.split(",")
                 for keyword in keywords:
-                    keyword_regex = ".*" + keyword+".*"
-                    mashups = mashups.filter(title__regex=keyword_regex)
-                    mashups = mashups.filter(summary__regex=keyword_regex)
-                    mashups = mashups.filter(description__regex=keyword_regex)
+                    # keyword_regex = ".*" + keyword+".*"
+                    mashups = mashups.filter(title__icontains=keyword)
+                    mashups = mashups.filter(summary__icontains=keyword)
+                    mashups = mashups.filter(description__icontains=keyword)
 
             mashups_serializer = MashupSerializer(mashups, many=True)
             return JsonResponse(mashups_serializer.data, safe=False)
@@ -183,6 +200,21 @@ def MashupList(request):
                 x.replace('Z', 'UTC'), '%Y-%m-%dT%H:%M:%S%Z') if isinstance(x, str) else x)
             mashupData = mashupData.drop(columns=['APIs'])
 
+            tags = mashupData['Tags'].apply(lambda x: x.split(',')).tolist()
+            tags = list(set(list(itertools.chain.from_iterable(tags))))
+            tags = list(map(lambda x: {'key': x, 'text': x, 'value': x}, tags))
+
+            apinames = mashupData['APINames'].apply(
+                lambda x: x.split(',')).tolist()
+            apinames = list(set(list(itertools.chain.from_iterable(apinames))))
+            apinames = list(
+                map(lambda x: {'key': x, 'text': x, 'value': x}, apinames))
+
+            years = list(map(lambda x: {'key': x, 'text': x, 'value': x}, mashupData['updated'].apply(
+                lambda x: x.year).unique()))
+
+            response = {'tags': tags, 'apinames': apinames, 'years': years}
+
             data = [{k: v for k, v in m.items() if not (isinstance(v, float) and math.isnan(v))}
                     for m in mashupData.to_dict(orient='rows')]
 
@@ -191,6 +223,8 @@ def MashupList(request):
             del data
             for i in tqdm(range(len(aList))):
                 aList[i].save()
+
+            return JsonResponse(response, status=status.HTTP_201_CREATED)
 
     elif request.method == 'DELETE':
         count = Mashup.objects.all().delete()
