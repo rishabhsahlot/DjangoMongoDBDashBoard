@@ -17,14 +17,78 @@ from tqdm import tqdm
 import itertools
 
 
-@api_view(['GET', 'DELETE'])
+@api_view(['GET'])
+def getCounts(request):
+
+    # APIs = API.objects.all()
+    categories = list(set(API.objects.values_list('category', flat=True)))
+    categories = list(
+        map(lambda x: {'key': x, 'text': x, 'value': x}, categories))
+    api_tags = list(map(lambda x: x.split(','), list(
+        API.objects.values_list('Tags', flat=True))))
+    api_tags = list(set(list(itertools.chain.from_iterable(api_tags))))
+    api_tags = list(map(lambda x: {'key': x, 'text': x, 'value': x}, api_tags))
+    protocols = list(set(API.objects.values_list('protocols', flat=True)))
+    protocols = list(
+        map(lambda x: {'key': x, 'text': x, 'value': x}, protocols))
+
+    api_updated = list(set(API.objects.values_list('updated', flat=True)))
+    api_years = list(map(lambda x: {'key': x, 'text': x, 'value': x}, set(
+        map(lambda x: x.year, api_updated))))
+
+    API_data = {'categories': categories, 'api_tags': api_tags,
+                'protocols': protocols, 'years': api_years}
+
+    mashup_tags = list(map(lambda x: x.split(','), list(
+        Mashup.objects.values_list('Tags', flat=True))))
+    mashup_tags = list(set(list(itertools.chain.from_iterable(mashup_tags))))
+    mashup_tags = list(
+        map(lambda x: {'key': x, 'text': x, 'value': x}, mashup_tags))
+
+    mashup_apinames = list(map(lambda x: x.split(','), list(
+        Mashup.objects.values_list('APINames', flat=True))))
+    mashup_apinames = list(
+        set(list(itertools.chain.from_iterable(mashup_apinames))))
+    mashup_apinames = list(
+        map(lambda x: {'key': x, 'text': x, 'value': x}, mashup_apinames))
+
+    mashup_updated = list(
+        set(Mashup.objects.values_list('updated', flat=True)))
+    mashup_years = list(map(lambda x: {'key': x, 'text': x, 'value': x}, set(
+        map(lambda x: x.year, mashup_updated))))
+
+    Mashup_data = {'tags': mashup_tags,
+                   'apinames': mashup_apinames, 'years': mashup_years}
+
+    response = {'APICount': API.objects.all().count(), 'MashupCount': Mashup.objects.all(
+    ).count(), 'API': API_data, 'Mashup': Mashup_data}
+    return JsonResponse(response)
+
+
+@api_view(['GET'])
+def deleteAPIs(request):
+    count = API.objects.all().count()
+    API.objects.all().delete()
+    return JsonResponse({'message': '{} APIs were deleted successfully!'.format(count)}, status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
+def deleteMashups(request):
+    count = Mashup.objects.all().count()
+    Mashup.objects.all().delete()
+    return JsonResponse({'message': '{} Mashups were deleted successfully!'.format(count)}, status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
 def APIList(request):
     # GET list of APIs, POST a new API, DELETE all API
     if request.method == 'GET':
+        countflag = request.GET.get('CountRequest', None)
+        if countflag is not None:
+            return JsonResponse({'count': API.objects.all().count()})
 
         # Getting text file containing API information
         db_source = request.GET.get('DBSource', None)
-        print(db_source)
         if db_source is None:
             apis = API.objects.all()
 
@@ -49,7 +113,7 @@ def APIList(request):
             # Rating
             rat = request.GET.get('rating', None)
             if rat is not None:
-                [op, rat] = rat.split("-")
+                [rat, op] = rat.split("-")
                 rat = float(rat)
                 if op == 'lt':
                     apis = apis.filter(rating__lt=rat)
@@ -78,6 +142,8 @@ def APIList(request):
                     apis = apis.filter(summary__icontains=keyword)
                     apis = apis.filter(description__icontains=keyword)
 
+            apis = apis.values(
+                'name', 'uid')
             apis_serializer = APISerializer(apis, many=True)
             return JsonResponse(apis_serializer.data, safe=False)
 
@@ -101,17 +167,18 @@ def APIList(request):
             apiData['updated'] = apiData['updated'].apply(lambda x: datetime.strptime(
                 x.replace('Z', 'UTC'), '%Y-%m-%dT%H:%M:%S%Z') if isinstance(x, str) else x)
 
-            tags = apiData['Tags'].apply(lambda x: x.split(',')).tolist()
-            tags = list(set(list(itertools.chain.from_iterable(tags))))
-            tags = list(map(lambda x: {'key': x, 'text': x, 'value': x}, tags))
-            protocols = list(map(lambda x: {'key': x, 'text': x, 'value': x}, list(
-                apiData['protocols'].unique())))
-            categories = list(map(lambda x: {'key': x, 'text': x, 'value': x}, list(
-                apiData['category'].unique())))
-            years = list(map(lambda x: {'key': x, 'text': x, 'value': x}, apiData['updated'].apply(
-                lambda x: x.year).unique()))
-            response = {'protocols': protocols,
-                        'categories': categories, 'years': years}
+            # tags = apiData['Tags'].apply(lambda x: x.split(',')).tolist()
+            # tags = list(set(list(itertools.chain.from_iterable(tags))))
+            # tags = list(map(lambda x: {'key': x, 'text': x, 'value': x}, tags))
+            # protocols = list(map(lambda x: {'key': x, 'text': x, 'value': x}, list(
+            #     apiData['protocols'].unique())))
+            # categories = list(map(lambda x: {'key': x, 'text': x, 'value': x}, list(
+            #     apiData['category'].unique())))
+            # years = list(map(lambda x: {'key': x, 'text': x, 'value': x}, apiData['updated'].apply(
+            #     lambda x: x.year).unique()))
+
+            # response = {'api_record_count': len(apiData), 'protocols': protocols,
+            #             'categories': categories, 'years': years}
 
             data = [{k: v for k, v in m.items() if not (isinstance(
                 v, float) and math.isnan(v))} for m in apiData.to_dict(orient='rows')]
@@ -122,16 +189,16 @@ def APIList(request):
             for i in tqdm(range(len(aList))):
                 aList[i].save()
 
-            return JsonResponse(response, status=status.HTTP_201_CREATED)
+            return JsonResponse({'Message': 'Successful'}, status=status.HTTP_201_CREATED)
 
             # /api/DashBoardApp/APIs?DBSource=D:\CoursesAndLearning\Spring2021\CSCI724\Assn3\DjangoMongoDBDashBoard\data\api.txt
 
-    elif request.method == 'DELETE':
-        count = API.objects.all().delete()
-        return JsonResponse({'message': '{} Mashups were deleted successfully!'.format(count[0])}, status=status.HTTP_204_NO_CONTENT)
+    # elif request.method == 'DELETE':
+    #     count = API.objects.all().delete()
+    #     return JsonResponse({'message': '{} Mashups were deleted successfully!'.format(count[0])}, status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['GET',  'DELETE'])
+@api_view(['GET'])
 def MashupList(request):
     # GET list of Mashups, POST a new Mashup Database, DELETE all Mashups
     if request.method == 'GET':
@@ -174,7 +241,7 @@ def MashupList(request):
                     mashups = mashups.filter(title__icontains=keyword)
                     mashups = mashups.filter(summary__icontains=keyword)
                     mashups = mashups.filter(description__icontains=keyword)
-
+            mashups = mashups.values('name', 'mid')
             mashups_serializer = MashupSerializer(mashups, many=True)
             return JsonResponse(mashups_serializer.data, safe=False)
 
@@ -200,20 +267,20 @@ def MashupList(request):
                 x.replace('Z', 'UTC'), '%Y-%m-%dT%H:%M:%S%Z') if isinstance(x, str) else x)
             mashupData = mashupData.drop(columns=['APIs'])
 
-            tags = mashupData['Tags'].apply(lambda x: x.split(',')).tolist()
-            tags = list(set(list(itertools.chain.from_iterable(tags))))
-            tags = list(map(lambda x: {'key': x, 'text': x, 'value': x}, tags))
+            # tags = mashupData['Tags'].apply(lambda x: x.split(',')).tolist()
+            # tags = list(set(list(itertools.chain.from_iterable(tags))))
+            # tags = list(map(lambda x: {'key': x, 'text': x, 'value': x}, tags))
 
-            apinames = mashupData['APINames'].apply(
-                lambda x: x.split(',')).tolist()
-            apinames = list(set(list(itertools.chain.from_iterable(apinames))))
-            apinames = list(
-                map(lambda x: {'key': x, 'text': x, 'value': x}, apinames))
+            # apinames = mashupData['APINames'].apply(
+            #     lambda x: x.split(',')).tolist()
+            # apinames = list(set(list(itertools.chain.from_iterable(apinames))))
+            # apinames = list(
+            #     map(lambda x: {'key': x, 'text': x, 'value': x}, apinames))
 
-            years = list(map(lambda x: {'key': x, 'text': x, 'value': x}, mashupData['updated'].apply(
-                lambda x: x.year).unique()))
+            # years = list(map(lambda x: {'key': x, 'text': x, 'value': x}, mashupData['updated'].apply(
+            #     lambda x: x.year).unique()))
 
-            response = {'tags': tags, 'apinames': apinames, 'years': years}
+            # response = {'tags': tags, 'apinames': apinames, 'years': years}
 
             data = [{k: v for k, v in m.items() if not (isinstance(v, float) and math.isnan(v))}
                     for m in mashupData.to_dict(orient='rows')]
@@ -224,8 +291,8 @@ def MashupList(request):
             for i in tqdm(range(len(aList))):
                 aList[i].save()
 
-            return JsonResponse(response, status=status.HTTP_201_CREATED)
+            return JsonResponse({'Message': 'Successful'}, status=status.HTTP_201_CREATED)
 
-    elif request.method == 'DELETE':
-        count = Mashup.objects.all().delete()
-        return JsonResponse({'message': '{} Mashups were deleted successfully!'.format(count[0])}, status=status.HTTP_204_NO_CONTENT)
+    # elif request.method == 'DELETE':
+    #     count = Mashup.objects.all().delete()
+    #     return JsonResponse({'message': '{} Mashups were deleted successfully!'.format(count[0])}, status=status.HTTP_204_NO_CONTENT)

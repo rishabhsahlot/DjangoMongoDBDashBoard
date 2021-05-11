@@ -7,16 +7,7 @@ class APISerializer(serializers.ModelSerializer):
     class Meta:
         model = API
         fields = ('uid',
-                  'name',
-                  'updated',
-                  'protocols',
-                  'category',
-                  'rating',
-                  'Tags',
-                  'title',
-                  'summary',
-                  'description'
-                  )
+                  'name')
 
 
 class MashupSerializer(serializers.ModelSerializer):
@@ -24,9 +15,4 @@ class MashupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mashup
         fields = ('mid',
-                  'title',
-                  'APINames',
-                  'Tags',
-                  'title',
-                  'summary',
-                  'description')
+                  'name')
